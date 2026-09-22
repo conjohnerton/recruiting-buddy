@@ -25,11 +25,16 @@ Call logging is deferred — see `future/call-logger` branch.
    access to the browser profile can read it — acceptable for MVP; nothing
    leaves the browser except calls to `api.hubapi.com`.
 
-## Load unpacked
+## Load unpacked (local test)
 
-1. `chrome://extensions` → enable Developer mode → Load unpacked →
+Prerequisite: [bun](https://bun.sh) 1.x (builds the TypeScript sources).
+
+1. `cd ~/recruiting-buddy && bun install && bun run build`
+2. `chrome://extensions` → enable Developer mode → Load unpacked →
    select `~/recruiting-buddy/extension`.
-2. Open extension Options, paste token, Test connection → "Connection OK."
+3. Open extension Options, paste token, Test connection → "Connection OK."
+4. After any `src/` edit: re-run `bun run build`, then hit Reload on the
+   extension card (or `bun run watch` during dev + manual reload).
 
 ## Manual test checklist
 
@@ -45,6 +50,9 @@ Call logging is deferred — see `future/call-logger` branch.
 
 ## Dev
 
-- Zero deps. `node --test test/` (node 18+). Lib files are classic scripts
-  (`self.RB` namespace) shared by SW, content scripts, and tests.
-- Contracts: `CONTRACT.md`.
+- `bun run test` = typecheck + `bun test test/` + manifest drift check.
+- Sources in `src/` (TypeScript, strict); `bun run build` bundles each entry
+  to `extension/` with bun's iife bundler — no bundler config, no deps.
+  Never edit `extension/*.js` by hand; it is build output.
+- Shared shapes live in `src/types.ts` so the worker, buttons, and options
+  page can't drift. Contracts: `CONTRACT.md`.

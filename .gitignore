@@ -1,1 +1,5 @@
 node_modules/
+extension/background/worker.js
+extension/content/linkedin.js
+extension/content/doccafe.js
+extension/options/options.js

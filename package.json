@@ -1,1 +1,18 @@
-{"name": "recruiting-buddy", "private": true, "type": "commonjs", "version": "0.1.0", "description": "HubSpot logging helper for healthcare recruiting (search logger MVP).", "scripts": {"test": "node --test test/"}}
+{
+  "description": "HubSpot logging helper for healthcare recruiting (search logger MVP).",
+  "name": "recruiting-buddy",
+  "private": true,
+  "scripts": {
+    "build": "bun run typecheck && bun build --root src src/background/worker.ts src/content/linkedin.ts src/content/doccafe.ts src/options/options.ts --outdir extension --format=iife",
+    "check:manifest": "bun scripts/check-manifest.ts",
+    "test": "bun run typecheck && bun test test/ && bun run check:manifest",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "watch": "tsc -p tsconfig.json --noEmit --watch"
+  },
+  "type": "module",
+  "version": "0.1.0",
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "bun-types": "^1.4.2"
+  }
+}
