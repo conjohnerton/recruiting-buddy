@@ -38,6 +38,10 @@ export type LogSearchMessage = { type: 'RB_LOG_SEARCH'; payload: SearchPayload }
 export type TestConnectionMessage = { type: 'RB_TEST_CONNECTION' };
 export type WorkerMessage = LogSearchMessage | TestConnectionMessage;
 
+/** Popup asks the page for a ready-made payload instead of duplicating parsing. */
+export type BuildPayloadMessage = { type: 'RB_BUILD_PAYLOAD' };
+export type BuildPayloadReply = { ok: true; payload: SearchPayload } | { ok: false; error: string };
+
 /** Every reply the worker sends back to a button or the options page. */
 export type WorkerReply = { ok: boolean; deduped?: boolean; error?: string; queued?: boolean };
 

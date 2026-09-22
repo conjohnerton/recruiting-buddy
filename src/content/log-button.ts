@@ -3,7 +3,7 @@
  * site-specific functions; everything else (button, messaging, labels)
  * lives here so the two buttons can't drift apart.
  */
-import type { SearchPayload, WorkerReply } from '../types.ts';
+import type { BuildPayloadReply, SearchPayload, WorkerReply } from '../types.ts';
 
 export interface ButtonSite {
   /** False on non-search pages (job detail, homepage) → button stays hidden. */
@@ -14,6 +14,9 @@ export interface ButtonSite {
 
 const BUTTON_ID = 'rb-log-search';
 const IDLE_LABEL = 'Log this search';
+
+/** The storage key deciding whether this site shows the floating pill at all. */
+export type ShowButtonKey = 'rb.showButton.linkedin' | 'rb.showButton.doccafe';
 
 function findButton(): HTMLButtonElement | null {
   try {
@@ -60,8 +63,10 @@ function showStatus(btn: HTMLButtonElement, text: string): void {
   }
 }
 
-/** Mount the pill; safe to call repeatedly (SPA navigation re-checks visibility). */
-export function mountLogButton(site: ButtonSite, accent: string): void {
+/** Mount the pill; safe to call repeatedly (SPA navigation re-checks visibility).
+ *  Visibility = user toggle AND search page. Toggle changes apply live via
+ *  storage.onChanged, so she never needs a reload after settings. */
+export function mountLogButton(site: ButtonSite, accent: string, showButtonKey: ShowButtonKey): void {
   const onClick = () => {
     const btn = findButton();
     if (!btn || btn.disabled) return;
@@ -82,11 +87,27 @@ export function mountLogButton(site: ButtonSite, accent: string): void {
   const refresh = () => {
     try {
       const btn = findButton() ?? createButton(onClick, accent);
-      if (btn) btn.style.display = site.isSearchPage() ? '' : 'none';
+      if (btn) btn.style.display = site.isSearchPage() && floatingEnabled ? '' : 'none';
     } catch {
       /* ignore */
     }
   };
+
+  let floatingEnabled = true;
+  try {
+    void chrome.storage.local.get({ [showButtonKey]: true }).then((s) => {
+      floatingEnabled = s[showButtonKey] !== false;
+      refresh();
+    });
+    chrome.storage.onChanged.addListener((changes) => {
+      if (showButtonKey in changes) {
+        floatingEnabled = changes[showButtonKey].newValue !== false;
+        refresh();
+      }
+    });
+  } catch {
+    /* storage unavailable; default to visible */
+  }
 
   try {
     refresh();
@@ -95,4 +116,21 @@ export function mountLogButton(site: ButtonSite, accent: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Answer the popup's "log this page" request with a ready payload (or an
+ *  explanation when we are not on a search page). */
+export function mountPayloadListener(build: () => SearchPayload | null): void {
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type === 'RB_BUILD_PAYLOAD') {
+      try {
+        const payload = build();
+        if (payload) sendResponse({ ok: true, payload } satisfies BuildPayloadReply);
+        else sendResponse({ ok: false, error: 'Not a search page.' } satisfies BuildPayloadReply);
+      } catch (e) {
+        sendResponse({ ok: false, error: e instanceof Error ? e.message : 'Could not read the page.' } satisfies BuildPayloadReply);
+      }
+    }
+    return false;
+  });
 }
