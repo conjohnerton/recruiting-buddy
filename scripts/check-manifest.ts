@@ -13,6 +13,8 @@ function checkFile(label: string, relPath: string): void {
 
 checkFile('service worker', manifest.background.service_worker);
 checkFile('options page', manifest.options_page);
+if (manifest.action?.default_popup) checkFile('popup page', manifest.action.default_popup);
+checkFile('popup script', 'popup/popup.js');
 
 for (const cs of manifest.content_scripts) {
   for (const js of cs.js) checkFile('content script', js);

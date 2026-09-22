@@ -3,7 +3,7 @@
   "name": "recruiting-buddy",
   "private": true,
   "scripts": {
-    "build": "bun run typecheck && bun build --root src src/background/worker.ts src/content/linkedin.ts src/content/doccafe.ts src/options/options.ts --outdir extension --format=iife",
+    "build": "bun run typecheck && bun build --root src src/background/worker.ts src/content/linkedin.ts src/content/doccafe.ts src/options/options.ts src/popup/popup.ts --outdir extension --format=iife",
     "check:manifest": "bun scripts/check-manifest.ts",
     "test": "bun run typecheck && bun test test/ && bun run check:manifest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
