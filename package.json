@@ -1,0 +1,1 @@
+{"name": "recruiting-buddy", "private": true, "type": "commonjs", "version": "0.1.0", "description": "HubSpot logging helper for healthcare recruiting (search logger MVP).", "scripts": {"test": "node --test test/"}}
