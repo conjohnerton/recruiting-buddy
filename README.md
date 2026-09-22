@@ -7,9 +7,9 @@ Call logging is deferred — see `future/call-logger` branch.
 
 - **LinkedIn** people search: floating "Log this search" button writes a note
   with keywords/title/company/location, result count, timestamp, URL.
-- **DocCafe** job listings: same button; keywords from page title, facets from
-  path (`specialty/X`, `type/Y`, `us/state/S`, `city/C`), count from the
-  "Displaying … out of N" text or leading title number.
+- **DocCafe** candidate search (recruiter side, `/company/candidate/search`):
+  same button; the note captures every applied filter chip (occupation,
+  specialties, country, activity window, sponsorship) plus match count.
 - Notes are unassociated for the MVP: `POST /crm/v3/objects/notes` with
   `hs_note_body` + `hs_timestamp`.
 - Dedupes by hash(URL + UTC minute); retry queue (5 attempts, 5s→60s backoff)
@@ -42,8 +42,8 @@ Prerequisite: [bun](https://bun.sh) 1.x (builds the TypeScript sources).
       verify note in HubSpot (body format `Searched LinkedIn at <ISO>: …`).
 - [ ] Click again same minute → "Already logged ✓" → no second note.
 - [ ] Reload page → click → still "Already logged ✓" (persisted dedupe).
-- [ ] DocCafe: open a specialty listing → button visible; open a `/job/…`
-      detail page → button hidden.
+- [ ] DocCafe: run a candidate search (filters applied) → button visible;
+      open the dashboard/account page → button hidden.
 - [ ] Disconnect network → click → "Queued — will retry" → badge shows 1 →
       reconnect → note lands, badge clears.
 - [ ] Options page with bad token → Test connection shows failure.

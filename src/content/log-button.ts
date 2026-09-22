@@ -8,8 +8,9 @@ import type { BuildPayloadReply, SearchPayload, WorkerReply } from '../types.ts'
 export interface ButtonSite {
   /** False on non-search pages (job detail, homepage) → button stays hidden. */
   isSearchPage(): boolean;
-  /** Build the worker payload at click time. May throw → caught below. */
-  buildPayload(): SearchPayload;
+  /** Build the worker payload at click time. Null → not loggable (do nothing).
+   *  May throw → caught below. */
+  buildPayload(): SearchPayload | null;
 }
 
 const BUTTON_ID = 'rb-log-search';
@@ -73,6 +74,10 @@ export function mountLogButton(site: ButtonSite, accent: string, showButtonKey: 
     try {
       showStatus(btn, 'Logging…');
       const payload = site.buildPayload();
+      if (!payload) {
+        showStatus(btn, IDLE_LABEL);
+        return;
+      }
       chrome.runtime.sendMessage({ type: 'RB_LOG_SEARCH', payload }, (resp: WorkerReply) => {
         if (chrome.runtime.lastError) showStatus(btn, 'Error — retry');
         else if (resp?.ok) showStatus(btn, resp.deduped ? 'Already logged ✓' : 'Saved ✓');

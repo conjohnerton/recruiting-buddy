@@ -1,58 +1,80 @@
 import { describe, it } from 'bun:test';
 import assert from 'node:assert/strict';
-import { docCafeKeywordsFromTitle, docCafeResultCountFromNodes, docCafeSearch, parseDocCafeSearch } from '../src/doccafe.ts';
+import {
+  docCafeCandidateSearch,
+  docCafeChipFacets,
+  docCafeResultCount,
+  docCafeResultCountFromNodes,
+  isDocCafeCandidateSearch,
+} from '../src/doccafe.ts';
 
-const TITLE = '169 Sleep Medicine Physician jobs · DocCafe';
-const nodes = (texts: string[]) => texts.map((textContent) => ({ textContent }));
+// Her real search, captured 2026-09-22: Nurse Practitioners, Family
+// Practice/Primary Care, United States, active within 1 year.
+const CANDIDATE_URL =
+  'https://www.doccafe.com/company/candidate/search?token=bkz2DM7m0kqoW5BQ&occupation=9600&specialties%5B0%5D=420' +
+  '&countries%5B0%5D=228&registeredWithinType=preformatted&lastActivityWithinType=preformatted' +
+  '&lastActivityWithin=1y&showProfiles=not_hidden&sponsorshipStatus=visa_sponsorship_exclude';
 
-describe('recruiter logs a DocCafe specialty search', () => {
-  it('given a specialty path, when parsed, then specialty and title keywords come out', () => {
-    const f = parseDocCafeSearch('https://www.doccafe.com/physician-jobs/specialty/sleep-medicine', TITLE);
-    assert.equal(f.specialty, 'Sleep Medicine');
-    assert.equal(f.keywords, 'Sleep Medicine Physician');
-  });
-  it('given state+city segments, when parsed, then "UT" and "Salt Lake City" come out', () => {
-    const f = parseDocCafeSearch('https://www.doccafe.com/physician-jobs/specialty/sleep-medicine/us/state/ut/city/salt-lake-city', TITLE);
-    assert.equal(f.state, 'UT');
-    assert.equal(f.city, 'Salt Lake City');
-  });
-  it('given a type segment, when parsed, then the job type is humanized', () => {
-    assert.equal(parseDocCafeSearch('https://www.doccafe.com/physician-jobs/type/full-time', '300 Full-Time Physician jobs').jobType, 'Full Time');
-  });
-  it('given a job detail page, when parsed, then everything is empty so no button appears', () => {
-    assert.deepEqual(parseDocCafeSearch('https://www.doccafe.com/job/physician/sleep-medicine/20415238/x', 'Some Job · DocCafe'), {
-      keywords: '', specialty: '', state: '', city: '', jobType: '',
-    });
-  });
-  it('given a garbage URL, when parsed, then it yields empties instead of throwing', () => {
-    assert.deepEqual(parseDocCafeSearch('garbage'), { keywords: '', specialty: '', state: '', city: '', jobType: '' });
-  });
-});
+const HER_CHIPS = [
+  { name: 'occupations', text: 'Nurse Practitioner' },
+  { name: 'countries', text: 'United States' },
+  { name: 'specialties', text: 'Family Practice/Primary Care' },
+  { name: 'lastActivityWithinPeriod', text: 'Last activity within 1 Year' },
+  { name: 'sponsorshipStatus', text: 'Exclude Visa Sponsorship Candidates' },
+];
 
-describe('recruiter reads the DocCafe title back as keywords', () => {
-  it('given a listing title, when stripped, then count, "jobs", and brand fall away', () => {
-    assert.equal(docCafeKeywordsFromTitle(TITLE), 'Sleep Medicine Physician');
-    assert.equal(docCafeKeywordsFromTitle('1 ICU Nurse job'), 'ICU Nurse');
+describe('recruiter logs a DocCafe candidate search', () => {
+  it('given the candidate search URL, when checked, then it is a search page', () => {
+    assert.equal(isDocCafeCandidateSearch(CANDIDATE_URL), true);
   });
-});
+  it('given a dashboard or detail URL, when checked, then it is not a search page', () => {
+    assert.equal(isDocCafeCandidateSearch('https://www.doccafe.com/company'), false);
+    assert.equal(isDocCafeCandidateSearch('https://www.doccafe.com/company/employee/1573933/edit'), false);
+    assert.equal(isDocCafeCandidateSearch('garbage'), false);
+  });
 
-describe('recruiter sees how many DocCafe jobs matched', () => {
-  it('given "Displaying 1 - 30 jobs out of 169", when read, then the count is 169', () => {
-    assert.equal(docCafeResultCountFromNodes(nodes(['Displaying 1 - 30 jobs out of 169']), TITLE), 169);
+  it('given her applied filters, when chips are grouped, then each slot holds its labels', () => {
+    const facets = docCafeChipFacets(HER_CHIPS);
+    assert.equal(facets.occupation, 'Nurse Practitioner');
+    assert.equal(facets.specialties, 'Family Practice/Primary Care');
+    assert.equal(facets.country, 'United States');
+    assert.equal(facets.lastActivity, 'Last activity within 1 Year');
+    assert.equal(facets.other, 'Exclude Visa Sponsorship Candidates');
   });
-  it('given no count text, when read, then the title number is the fallback', () => {
-    assert.equal(docCafeResultCountFromNodes(nodes(['nothing']), TITLE), 169);
-  });
-  it('given neither text nor title number, when read, then the count is unknown (null)', () => {
-    assert.equal(docCafeResultCountFromNodes(nodes(['nothing']), 'Physician jobs'), null);
-  });
-  it('given facets and a count, when packaged, then city/state join into "Salt Lake City, UT"', () => {
-    const p = docCafeSearch(
-      'https://www.doccafe.com/physician-jobs/specialty/sleep-medicine/us/state/ut/city/salt-lake-city', TITLE, 169, 1000);
+
+  it('given her search and 13,891 matches, when packaged, then every filter shows in the note keywords', () => {
+    const p = docCafeCandidateSearch(CANDIDATE_URL, 13891, 1000, HER_CHIPS);
     assert.equal(p.platform, 'DocCafe');
-    assert.equal(p.location, 'Salt Lake City, UT');
-    assert.equal(p.specialty, 'Sleep Medicine');
-    assert.equal(p.keywords, 'Sleep Medicine Physician');
-    assert.equal(p.resultCount, 169);
+    assert.equal(
+      p.keywords,
+      'Nurse Practitioner, Family Practice/Primary Care, United States, Last activity within 1 Year, Exclude Visa Sponsorship Candidates',
+    );
+    assert.equal(p.location, 'United States');
+    assert.equal(p.specialty, 'Family Practice/Primary Care');
+    assert.equal(p.resultCount, 13891);
+    assert.equal(p.url, CANDIDATE_URL);
+    assert.equal(p.observedAtMs, 1000);
+  });
+
+  it('given no chips, when packaged, then keywords stay empty but the payload still builds', () => {
+    const p = docCafeCandidateSearch(CANDIDATE_URL, null, 1, []);
+    assert.equal(p.keywords, '');
+    assert.equal(p.resultCount, null);
+  });
+});
+
+describe('recruiter sees how many DocCafe candidates matched', () => {
+  it('given "Displaying 1 - 50 profiles out of 13,891", when read, then the count is 13891', () => {
+    assert.equal(docCafeResultCount('Displaying 1 - 50 profiles out of 13,891'), 13891);
+  });
+  it('given node texts, when read, then the count comes out the same way', () => {
+    assert.equal(
+      docCafeResultCountFromNodes([{ textContent: 'Displaying 1 - 50 profiles out of 13,891' }, { textContent: 'x' }]),
+      13891,
+    );
+  });
+  it('given no count rendered, when read, then the count is unknown (null)', () => {
+    assert.equal(docCafeResultCount('nothing here'), null);
+    assert.equal(docCafeResultCount(''), null);
   });
 });
